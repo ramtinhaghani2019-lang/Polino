@@ -14,38 +14,84 @@ data class ParsedSmsTransaction(
 )
 
 object SmsParser {
-    private val persianDigits = mapOf('۰' to '0','۱' to '1','۲' to '2','۳' to '3','۴' to '4','۵' to '5','۶' to '6','۷' to '7','۸' to '8','۹' to '9','٠' to '0','١' to '1','٢' to '2','٣' to '3','٤' to '4','٥' to '5','٦' to '6','٧' to '7','٨' to '8','٩' to '9')
 
-    private fun normalize(text: String): String = buildString {
-        text.forEach { append(persianDigits[it] ?: it) }
-    }.replace('٬', ',')
+    private fun normalize(text: String): String {
+        val digits = mapOf(
+            '۰' to '0','۱' to '1','۲' to '2',
+            '۳' to '3','۴' to '4','۵' to '5',
+            '۶' to '6','۷' to '7','۸' to '8',
+            '۹' to '9'
+        )
+
+        return text.map { digits[it] ?: it }
+            .joinToString("")
+            .replace(",", "")
+    }
 
     fun parse(raw: String): ParsedSmsTransaction? {
+
         val text = normalize(raw)
-        if (listOf("رمز", "پویا", "کد ورود", "otp").any { text.contains(it, true) }) return null
 
         val unit = when {
+            text.contains("ریال") -> MoneyUnit.RIAL
             text.contains("تومان") -> MoneyUnit.TOMAN
-            text.contains("ریال") -> MoneyUnit.IRR
-            else -> return null
+            else -> MoneyUnit.TOMAN
         }
 
-        val amountRegex = Regex("(?:مبلغ\\s*[:：]?\\s*)?([0-9][0-9,]{2,})\\s*(ریال|تومان)")
-        val matches = amountRegex.findAll(text).toList()
-        if (matches.isEmpty()) return null
-        val amount = matches.first().groupValues[1].replace(",", "").toLongOrNull() ?: return null
-
+        // تشخیص نوع تراکنش
         val type = when {
-            listOf("برداشت", "خرید", "پرداخت").any { text.contains(it) } -> "EXPENSE"
-            listOf("واریز", "واریزي", "واریزی").any { text.contains(it) } -> "INCOME"
-            else -> "UNKNOWN"
+
+            text.contains("+") ||
+            text.contains("واریز") ||
+            text.contains("افزایش موجودی") ->
+                "INCOME"
+
+            text.contains("-") ||
+            text.contains("برداشت") ||
+            text.contains("خرج شد") ||
+            text.contains("خرید") ||
+            text.contains("از حساب شما") ->
+                "EXPENSE"
+
+            else ->
+                "UNKNOWN"
         }
 
-        val card = Regex("(?:کارت|card)[^0-9]{0,10}(?:\\*+)?([0-9]{4})", RegexOption.IGNORE_CASE)
-            .find(text)?.groupValues?.getOrNull(1)
+        // استخراج مبلغ
+        val amountRegex = when {
 
-        val merchant = Regex("(?:پذیرنده|فروشگاه)\\s*[:：]?\\s*([^\\n]+)")
-            .find(text)?.groupValues?.getOrNull(1)?.trim()
+            text.contains("مبلغ") ->
+                Regex("""مبلغ[:\s]+(\d+)""")
+
+            text.contains("از حساب شما") ->
+                Regex("""(\d+)\s*ریال""")
+
+            else ->
+                Regex("""[+-]?\s*(\d+)""")
+        }
+
+        val amountMatch = amountRegex.find(text)
+            ?: return null
+
+        val amount = amountMatch.groupValues[1]
+            .toLongOrNull()
+            ?: return null
+
+
+        // کارت
+        val card = Regex("""(\d{4})""")
+            .find(text)
+            ?.groupValues
+            ?.firstOrNull()
+
+
+        // نام فروشگاه/توضیح
+        val merchant = when {
+            text.contains("محک") -> "خیریه محک"
+            text.contains("امیرآباد") -> "امیرآباد"
+            else -> null
+        }
+
 
         return ParsedSmsTransaction(
             amountIrr = CurrencyNormalizer.toIrr(amount, unit),
@@ -54,7 +100,7 @@ object SmsParser {
             type = type,
             cardLast4 = card,
             merchant = merchant,
-            confidence = if (type == "UNKNOWN") 65 else 85
+            confidence = if (type == "UNKNOWN") 60 else 95
         )
     }
 }
