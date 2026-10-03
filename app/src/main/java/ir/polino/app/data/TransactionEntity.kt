@@ -1,56 +1,22 @@
 package ir.polino.app.data
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import kotlinx.coroutines.flow.Flow
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
-data class CategoryExpense(
+@Entity(tableName = "transactions")
+data class TransactionEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+
+    val amountIrr: Long,
+    val originalAmount: Long,
+    val originalUnit: String,
+    val type: String,
     val category: String,
-    val total: Long
+    val note: String = "",
+    val bank: String? = null,
+    val cardLast4: String? = null,
+    val merchant: String? = null,
+    val source: String = "manual",
+    val createdAt: Long = System.currentTimeMillis()
 )
-
-@Dao
-interface TransactionDao {
-
-    @Query("SELECT * FROM transactions ORDER BY createdAt DESC")
-    fun observeAll(): Flow<List<TransactionEntity>>
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(item: TransactionEntity)
-
-
-    @Query("""
-        SELECT COALESCE(SUM(amountIrr),0)
-        FROM transactions
-        WHERE type = 'EXPENSE'
-    """)
-    fun getTotalExpense(): Flow<Long>
-
-
-    @Query("""
-        SELECT COUNT(*)
-        FROM transactions
-    """)
-    fun getTransactionCount(): Flow<Int>
-
-
-    @Query("""
-        SELECT COALESCE(SUM(amountIrr),0)
-        FROM transactions
-        WHERE type = 'EXPENSE'
-        AND date(createdAt / 1000,'unixepoch') = date('now')
-    """)
-    fun getTodayExpense(): Flow<Long>
-
-
-    @Query("""
-        SELECT category, SUM(amountIrr) as total
-        FROM transactions
-        WHERE type = 'EXPENSE'
-        GROUP BY category
-        ORDER BY total DESC
-    """)
-    fun getExpenseByCategory(): Flow<List<CategoryExpense>>
-}
