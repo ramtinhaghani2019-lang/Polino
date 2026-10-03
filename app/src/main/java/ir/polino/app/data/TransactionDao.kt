@@ -1,16 +1,37 @@
 package ir.polino.app.data
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import kotlinx.coroutines.flow.Flow
+import android.content.Context
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
 
-@Dao
-interface TransactionDao {
-    @Query("SELECT * FROM transactions ORDER BY createdAt DESC")
-    fun observeAll(): Flow<List<TransactionEntity>>
+@Database(
+    entities = [TransactionEntity::class],
+    version = 1,
+    exportSchema = false
+)
+abstract class PolinoDatabase : RoomDatabase() {
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(item: TransactionEntity): Long
+    abstract fun transactionDao(): TransactionDao
+
+    companion object {
+
+        @Volatile
+        private var INSTANCE: PolinoDatabase? = null
+
+        fun get(context: Context): PolinoDatabase {
+            return INSTANCE ?: synchronized(this) {
+
+                Room.databaseBuilder(
+                    context.applicationContext,
+                    PolinoDatabase::class.java,
+                    "polino.db"
+                )
+                .build()
+                .also {
+                    INSTANCE = it
+                }
+            }
+        }
+    }
 }
