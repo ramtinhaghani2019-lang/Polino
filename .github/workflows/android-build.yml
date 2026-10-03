@@ -2,8 +2,8 @@ name: Build Polino Android
 
 on:
   push:
-    branches: [ main, master, develop ]
-  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -23,39 +23,41 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
-      - name: Install Android command line tools
+      - name: Install Android SDK 36
         shell: bash
         run: |
-          mkdir -p "$HOME/android-sdk/cmdline-tools"
-          cd /tmp
-          curl -fsSL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip
-          unzip -q cmdline-tools.zip
-          mv cmdline-tools "$HOME/android-sdk/cmdline-tools/latest"
-          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$HOME/android-sdk/platform-tools" >> "$GITHUB_PATH"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
 
-      - name: Install Android API 37
-        shell: bash
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          fi
 
-      - name: Set up Gradle 9.5.0
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.5.0'
+          gradle-version: '8.13'
 
-      - name: Recreate Gradle wrapper if needed
+      - name: Generate Gradle wrapper
         shell: bash
         run: |
-          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            gradle wrapper --gradle-version 9.5.0
-          fi
+          gradle wrapper --gradle-version 8.13
           chmod +x gradlew
+
+      - name: Verify Gradle
+        run: ./gradlew --version
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
@@ -71,11 +73,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload test reports on failure
+      - name: Upload failure reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: Polino-test-reports
+          name: Polino-build-reports
           path: |
             app/build/reports/
             app/build/test-results/
