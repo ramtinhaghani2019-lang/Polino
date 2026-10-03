@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p "$HOME/android-sdk/cmdline-tools"
           cd /tmp
-          curl -fsSL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          curl -fsSL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip
           unzip -q cmdline-tools.zip
           mv cmdline-tools "$HOME/android-sdk/cmdline-tools/latest"
           echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0"
 
       - name: Set up Gradle 9.5.0
         uses: gradle/actions/setup-gradle@v4
