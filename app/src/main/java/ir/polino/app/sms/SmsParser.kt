@@ -33,7 +33,7 @@ object SmsParser {
         val text = normalize(raw)
 
         val unit = when {
-            text.contains("ریال") -> MoneyUnit.RIAL
+            text.contains("ریال") -> MoneyUnit.IRR
             text.contains("تومان") -> MoneyUnit.TOMAN
             else -> MoneyUnit.TOMAN
         }
