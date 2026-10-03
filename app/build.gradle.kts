@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "ir.polino.app"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ir.polino.app"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 2
         versionName = "0.1.2-alpha"
 
