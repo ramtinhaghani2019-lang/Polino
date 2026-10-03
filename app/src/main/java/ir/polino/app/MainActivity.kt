@@ -56,7 +56,7 @@ private fun PolinoRoot() {
 
     Scaffold(
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = { showAdd = true }, text = { Text("ثبت هزینه") })
+            ExtendedFloatingActionButton(onClick = { showAdd = true }) { Text("ثبت هزینه") }
         }
     ) { padding ->
         CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl) {
